@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Coupon Vault</title>
+  <title>Super swag coupon vault</title>
   <style>
     :root {
       --bg: #0b0c10;
@@ -219,7 +219,7 @@
     <div class="modal">
       <div class="body">
         <h2>Coupon Vault</h2>
-        <p>Sign in with the shared team account.</p>
+        <p>Sign in with the account (DM if u don't know) pwz :></p>
         <div class="field full" style="margin-bottom:12px;">
           <label for="emailInput">Shared admin email</label>
           <input id="emailInput" type="email" placeholder="admin@example.com" autocomplete="username" />
@@ -229,7 +229,7 @@
           <input id="pwInput" type="password" placeholder="Password" autocomplete="current-password" />
         </div>
         <div class="help" style="margin-top:12px;">
-          The login is handled by Supabase Auth. The coupon data lives in your shared database, so every device sees the same ledger.
+          The login is backed up by Supabase. Might be a bit unhandy but who cares it works
         </div>
       </div>
       <div class="foot">
@@ -245,7 +245,7 @@
     <div class="topbar">
       <div class="brand">
         <h1>Coupon Vault</h1>
-        <p>Shared admin dashboard for generating, checking, redeeming, revoking, and expiring coupons.</p>
+        <p>Super swag shared admin dashboard for generating, checking, redeeming, revoking, and expiring coupons</p>
       </div>
       <div class="pill-row">
         <div class="pill" id="storagePill">Storage: Supabase</div>
@@ -267,7 +267,7 @@
           <div class="head">
             <div>
               <h2>Create coupon</h2>
-              <p class="subtle">Generates a random code, stores only its SHA-256 hash, and writes the record to Supabase.</p>
+              <p class="subtle">Generates random code, stores it safely, writes record in database. bonk.</p>
             </div>
           </div>
           <div class="body">
@@ -295,7 +295,7 @@
             </div>
             <div style="margin-top:16px; display:none;" id="latestBox" class="result"></div>
             <p class="help" style="margin-top:12px;">
-              Copy the visible coupon code immediately after creation. Only the hash is stored in the database.
+              REMEMBER TO immediately copy the coupon when it shows up, when you've made it you can't see it anymore afterwards.
             </p>
           </div>
         </section>
@@ -304,7 +304,7 @@
           <div class="head">
             <div>
               <h2>Check, redeem, or revoke</h2>
-              <p class="subtle">Paste the plain coupon code here; the app hashes it and looks up the record.</p>
+              <p class="subtle">Paste the plain coupon code here, will be checked in database I hope</p>
             </div>
           </div>
           <div class="body">
@@ -325,7 +325,7 @@
               <button class="btn secondary" id="deleteBtn" disabled>Delete</button>
             </div>
             <p class="help" style="margin-top:12px;">
-              Expiry is automatic: once the expiry time passes, the coupon is treated as expired everywhere.
+              Expiry is automatic: the coupon is treated as expired everywhere the moment it is expired.
             </p>
           </div>
         </section>
@@ -335,7 +335,7 @@
         <div class="head">
           <div>
             <h2>Coupon ledger</h2>
-            <p class="subtle">Most recent coupons first. The table refreshes from Supabase so multiple devices stay aligned.</p>
+            <p class="subtle">semi-live table (every 15 sec or so) of all the coupons, most recent are on top.</p>
           </div>
           <div class="actions">
             <button class="btn secondary" id="hideUsedBtn">Hide used / revoked</button>
@@ -454,7 +454,7 @@
       $('latestBox').innerHTML = `
         <div class="badge ok">New coupon created</div>
         <div style="margin-top:10px;">
-          <div class="subtle tiny">Copy this visible code now. Only the hash is stored.</div>
+          <div class="subtle tiny">Copy this visible code n o w. Only the hash is stored, you can't see it anymore after creating.</div>
           <div class="mono" style="margin-top:8px; font-size:1.05rem; letter-spacing:.12em;">${escapeHtml(code)}</div>
         </div>
         <div class="subtle tiny" style="margin-top:10px;">${coupon.discount_pct}% off · expires ${escapeHtml(fmt(coupon.expires_at))}</div>
@@ -487,7 +487,7 @@
             </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="6" style="color:var(--muted);">No coupons yet. Generate the first one above.</td></tr>`;
+      }).join('') : `<tr><td colspan="6" style="color:var(--muted);">No coupons yet. make the first one above hehe</td></tr>`;
     }
 
     async function renderAll() {
@@ -555,7 +555,7 @@
     async function showCouponResult(coupon) {
       if (!coupon) {
         $('searchResult').style.display = 'block';
-        $('searchResult').innerHTML = `<div class="badge bad">❌ Not found</div><div class="help" style="margin-top:10px;">No matching coupon hash exists in the database.</div>`;
+        $('searchResult').innerHTML = `<div class="badge bad">Not found</div><div class="help" style="margin-top:10px;">No matching coupon hash exists in the database. check again?</div>`;
         state.selectedHash = null;
         setButtons(false);
         return;
@@ -727,7 +727,7 @@
         }
       });
 
-      await loadCoupons().catch(() => {});
+
       setInterval(() => loadCoupons().catch(() => {}), 15000);
     }
 
