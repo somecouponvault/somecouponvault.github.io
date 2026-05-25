@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>coupon generator go brr pwz work :3</title>
+    <style>
+        @font-face {
+            font-family: 'SpecialElite-Regular';
+            src: url('fonts/SpecialElite-Regular.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        :root {
+            --bg-color: #121212;
+            --panel-color: #1a1a1a;
+            --accent-color: #cdaf73;
+            --text-color: #e0e0e0;
+            --border-color: #2c2c2c;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'SpecialElite-Regular', 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--panel-color);
+            padding: 2.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 {
+            color: var(--accent-color);
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+
+        label {
+            font-size: 0.9rem;
+            color: #888;
+            letter-spacing: 1px;
+        }
+
+        input[type="text"] {
+            background-color: #0b0b0b;
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 0.8rem 1rem;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        button {
+            background-color: transparent;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            font-family: inherit;
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px rgba(205, 175, 115, 0.3);
+        }
+
+        button:disabled {
+            border-color: #444;
+            color: #444;
+            cursor: not-allowed;
+        }
+
+        #preview-container {
+            margin-top: 2rem;
+            display: none;
+        }
+
+        #preview-image {
+            max-width: 100%;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Typewriter Stamp Generator</h1>
+        
+        <div class="input-group">
+            <label for="coupon-code">Enter Coupon Code</label>
+            <input type="text" id="coupon-code" placeholder="E.G. FAX-IS-SWAG" autocomplete="off">
+        </div>
+
+        <div class="btn-group">
+            <button id="generate-btn">Generate Stamp</button>
+            <button id="download-btn" disabled>Download PNG</button>
+        </div>
+
+        <div id="preview-container">
+            <p style="font-size: 0.8rem; color: #666; margin-bottom: 0.5rem;">PREVIEW</p>
+            <img id="preview-image" src="" alt="Coupon Preview">
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const TEMPLATE_PATH = 'coupon-template.png';
+        const FONT_NAME = 'SpecialElite-Regular';
+
+        const LUMA_THRESHOLD = 112;
+        const ROW_COL_FRACTION = 0.45;
+        const SEARCH_X_PAD = 0.12;
+        const SEARCH_Y_PAD = 0.18;
+
+        const couponInput = document.getElementById('coupon-code');
+        const generateBtn = document.getElementById('generate-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImage = document.getElementById('preview-image');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let templateImg = new Image();
+        templateImg.src = TEMPLATE_PATH;
+
+        couponInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.toUpperCase();
+        });
+
+        generateBtn.addEventListener('click', () => {
+            const code = couponInput.value.trim().toUpperCase();
+            if (!code) return alert('enter a coupon code first lmao');
+
+            if (!templateImg.complete) {
+                templateImg.onload = () => processAndDraw(code);
+            } else {
+                processAndDraw(code);
+            }
+        });
+
+        function findParchmentBbox(width, height) {
+            const imgData = ctx.getImageData(0, 0, width, height);
+            const data = imgData.data;
+
+            const x0_pad = Math.floor(width * SEARCH_X_PAD);
+            const x1_pad = Math.floor(width * (1 - SEARCH_X_PAD));
+            const y0_pad = Math.floor(height * SEARCH_Y_PAD);
+            const y1_pad = Math.floor(height * (1 - SEARCH_Y_PAD));
+
+            const subW = x1_pad - x0_pad;
+            const subH = y1_pad - y0_pad;
+
+            const rowVotes = new Array(subH).fill(0);
+            const colVotes = new Array(subW).fill(0);
+
+            for (let y = y0_pad; y < y1_pad; y++) {
+                for (let x = x0_pad; x < x1_pad; x++) {
+                    const idx = (y * width + x) * 4;
+                    const r = data[idx];
+                    const g = data[idx + 1];
+                    const b = data[idx + 2];
+                    
+                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                    if (lum > LUMA_THRESHOLD) {
+                        rowVotes[y - y0_pad]++;
+                        colVotes[x - x0_pad]++;
+                    }
+                }
+            }
+
+            const validRows = [];
+            for (let i = 0; i < subH; i++) {
+                if ((rowVotes[i] / subW) > ROW_COL_FRACTION) validRows.push(i);
+            }
+
+            const validCols = [];
+            for (let i = 0; i < subW; i++) {
+                if ((colVotes[i] / subH) > ROW_COL_FRACTION) validCols.push(i);
+            }
+
+            if (validRows.length === 0 || validCols.length === 0) {
+                return {
+                    x0: Math.floor(width * 0.18),
+                    y0: Math.floor(height * 0.27),
+                    x1: Math.floor(width * 0.82),
+                    y1: Math.floor(height * 0.74)
+                };
+            }
+
+            return {
+                x0: x0_pad + Math.min(...validCols),
+                y0: y0_pad + Math.min(...validRows),
+                x1: x0_pad + Math.max(...validCols),
+                y1: y0_pad + Math.max(...validRows)
+            };
+        }
+
+        function fitFont(text, maxWidth, startSize) {
+            let size = startSize;
+            ctx.font = `${size}px "${FONT_NAME}", monospace`;
+            let metrics = ctx.measureText(text);
+
+            while (metrics.width > maxWidth && size > 10) {
+                size -= 2;
+                ctx.font = `${size}px "${FONT_NAME}", monospace`;
+                metrics = ctx.measureText(text);
+            }
+            return size;
+        }
+
+        function processAndDraw(code) {
+            canvas.width = templateImg.naturalWidth;
+            canvas.height = templateImg.naturalHeight;
+
+            ctx.drawImage(templateImg, 0, 0);
+
+            const bounds = findParchmentBbox(canvas.width, canvas.height);
+
+            const centerX = (bounds.x0 + bounds.x1) / 2;
+            const centerY = (bounds.y0 + bounds.y1) / 2 + 3; 
+            const maxWidth = Math.floor((bounds.x1 - bounds.x0) * 0.84);
+
+            const idealFontSize = Math.floor(canvas.height * 0.13);
+            const optimizedSize = fitFont(code, maxWidth, idealFontSize);
+
+            ctx.font = `${optimizedSize}px "${FONT_NAME}", monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            ctx.fillStyle = 'rgba(38, 24, 14, 0.94)'; 
+            
+            ctx.fillText(code, centerX, centerY);
+
+            const finalDataUrl = canvas.toDataURL('image/png');
+            previewImage.src = finalDataUrl;
+            previewContainer.style.display = 'block';
+
+            downloadBtn.onclick = () => {
+                const link = document.createElement('a');
+                link.download = `${code}.png`;
+                link.href = finalDataUrl;
+                link.click();
+            };
+            downloadBtn.disabled = false;
+        }
+    </script>
+</body>
+</html>
