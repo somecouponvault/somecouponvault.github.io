@@ -215,6 +215,7 @@
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     
+    /* Tab View Layout Constraints */
     .tab-content { display: none; }
     .tab-content.active { display: block; }
     .tab-content.active.grid { display: grid; }
@@ -875,6 +876,15 @@
     async function init() {
       if (SUPABASE_URL.includes('REPLACE_ME') || SUPABASE_ANON_KEY.includes('REPLACE_ME')) {
         $('loginOverlay').classList.add('show');
+      }
+
+      try {
+        const customFont = new FontFace(FONT_NAME, "url('SpecialElite-Regular.ttf')");
+        const loadedFont = await customFont.load();
+        document.fonts.add(loadedFont);
+        console.log("Typewriter font evaluated & loaded safely :3");
+      } catch (err) {
+        console.error("Font mapping matrix failed to preload:", err);
       }
 
       $('tabOverviewBtn').addEventListener('click', () => switchTab('tabOverviewBtn', 'tabContentOverview'));
