@@ -42,7 +42,7 @@
     .pill-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
     .pill { border: 1px solid var(--line); background: rgba(255,255,255,0.04); color: var(--text); padding: 10px 14px; border-radius: 999px; font-size: 0.92rem; }
 
-    .tabs-nav { display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+    .tabs-nav { display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--line); padding-bottom: 14px; flex-wrap: wrap; }
 
     .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
     .card {
@@ -214,6 +214,11 @@
       text-align: center;
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .tab-content.active.grid { display: grid; }
+    .focused-card-container { max-width: 760px; margin: 0 auto; width: 100%; }
   </style>
 </head>
 <body>
@@ -258,18 +263,23 @@
     </div>
 
     <div class="tabs-nav">
-      <button class="btn" id="tabVaultBtn">Vault Dashboard</button>
-      <button class="btn secondary" id="tabGeneratorBtn">stamp that thing</button>
+      <button class="btn" id="tabOverviewBtn">Overview</button>
+      <button class="btn secondary" id="tabCreateBtn">Create Coupon</button>
+      <button class="btn secondary" id="tabManageBtn">Check & Redeem</button>
+      <button class="btn secondary" id="tabLedgerBtn">Coupon Ledger</button>
+      <button class="btn secondary" id="tabImageBtn">Image Generator</button>
     </div>
 
-    <div class="grid" id="vaultTabContent">
+    <div class="grid tab-content active" id="tabContentOverview">
       <div class="card full">
         <div class="body">
           <div class="stats" id="stats"></div>
         </div>
       </div>
+    </div>
 
-      <div class="two-col">
+    <div class="tab-content" id="tabContentCreate">
+      <div class="focused-card-container">
         <section class="card">
           <div class="head">
             <div>
@@ -306,7 +316,11 @@
             </p>
           </div>
         </section>
+      </div>
+    </div>
 
+    <div class="tab-content" id="tabContentManage">
+      <div class="focused-card-container">
         <section class="card">
           <div class="head">
             <div>
@@ -332,17 +346,19 @@
               <button class="btn secondary" id="deleteBtn" disabled>Delete</button>
             </div>
             <p class="help" style="margin-top:12px;">
-              Expiry is automatic: the coupon is treated as expired everywhere the moment it is expired.
+              Expiry is automatic: the coupon is treated as expired everywhere the moment it expires.
             </p>
           </div>
         </section>
       </div>
+    </div>
 
+    <div class="grid tab-content" id="tabContentLedger">
       <section class="card full">
         <div class="head">
           <div>
             <h2>Coupon ledger</h2>
-            <p class="subtle">semi-live table (every 15 sec or so) of all the coupons, most recent are on top.</p>
+            <p class="subtle">semi-live table (every 15s refresh) of all the coupons, most recent are on top.</p>
           </div>
           <div class="actions">
             <button class="btn secondary" id="hideUsedBtn">Hide used / revoked</button>
@@ -367,12 +383,12 @@
       </section>
     </div>
 
-    <div class="grid" id="generatorTabContent" style="display: none;">
+    <div class="grid tab-content" id="tabContentImage">
       <div class="two-col">
         <section class="card">
           <div class="head">
             <div>
-              <h2>Generate Graphic Stamp</h2>
+              <h2>add text to the thing, iykyk</h2>
               <p class="subtle">Render explicit layout coupon codes directly into the template card mesh matrix image background layer automatically 🤓</p>
             </div>
           </div>
@@ -393,7 +409,7 @@
         <section class="card">
           <div class="head">
             <div>
-              <h2>Visual Output Mesh</h2>
+              <h2>Visual output mesh</h2>
               <p class="subtle">Live preview of generated asset footprint mapping node matrix logic 🤓</p>
             </div>
           </div>
@@ -496,6 +512,24 @@
       $('deleteBtn').disabled = !on;
     }
 
+    window.switchTab = function(btnId, contentId) {
+      const tabsMap = [
+        { btn: 'tabOverviewBtn', content: 'tabContentOverview' },
+        { btn: 'tabCreateBtn', content: 'tabContentCreate' },
+        { btn: 'tabManageBtn', content: 'tabContentManage' },
+        { btn: 'tabLedgerBtn', content: 'tabContentLedger' },
+        { btn: 'tabImageBtn', content: 'tabContentImage' }
+      ];
+
+      tabsMap.forEach(t => {
+        $(t.btn).classList.add('secondary');
+        $(t.content).classList.remove('active');
+      });
+
+      $(btnId).classList.remove('secondary');
+      $(contentId).classList.add('active');
+    };
+
     function renderStats() {
       const total = state.coupons.length;
       const active = state.coupons.filter(c => statusOf(c) === 'active').length;
@@ -593,7 +627,7 @@
       const { data, error } = await supabase.from('coupons').insert(payload).select('*').single();
       if (error) {
         console.error(error);
-        toast('Could not create coupon. (perhaps change your face) (dw youre just too nice for the program too handle)');
+        toast('Could not create coupon. (perhaps change your face) (dw youre just too nice for the program too handle) (another set of parentheses) (I cant do a high comma (idk accent? idkkk) cuz it will break the script and Im too lazy to fix that)');
         return;
       }
 
@@ -697,7 +731,6 @@
       if (updated) await showCouponResult(updated);
     }
 
-    // Generator Tab Logic
     function findParchmentBbox(width, height) {
       const canvasEl = $('canvas');
       const ctxEl = canvasEl.getContext('2d');
@@ -813,7 +846,7 @@
     async function login() {
       const email = $('emailInput').value.trim();
       const password = $('pwInput').value;
-      if (!email || !password) return toast('Enter the shared email and password.');
+      if (!email || !password) return toast('Enter the email and password pwz :3');
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
@@ -844,29 +877,19 @@
         $('loginOverlay').classList.add('show');
       }
 
-      // Tab Swapping Mechanism Setup
-      $('tabVaultBtn').addEventListener('click', () => {
-        $('tabVaultBtn').classList.remove('secondary');
-        $('tabGeneratorBtn').classList.add('secondary');
-        $('vaultTabContent').style.display = 'grid';
-        $('generatorTabContent').style.display = 'none';
-      });
-
-      $('tabGeneratorBtn').addEventListener('click', () => {
-        $('tabGeneratorBtn').classList.remove('secondary');
-        $('tabVaultBtn').classList.add('secondary');
-        $('vaultTabContent').style.display = 'none';
-        $('generatorTabContent').style.display = 'grid';
-      });
+      $('tabOverviewBtn').addEventListener('click', () => switchTab('tabOverviewBtn', 'tabContentOverview'));
+      $('tabCreateBtn').addEventListener('click', () => switchTab('tabCreateBtn', 'tabContentCreate'));
+      $('tabManageBtn').addEventListener('click', () => switchTab('tabManageBtn', 'tabContentManage'));
+      $('tabLedgerBtn').addEventListener('click', () => switchTab('tabLedgerBtn', 'tabContentLedger'));
+      $('tabImageBtn').addEventListener('click', () => switchTab('tabImageBtn', 'tabContentImage'));
 
       $('coupon-code').addEventListener('input', (e) => {
         e.target.value = e.target.value.toUpperCase();
       });
 
-      // Stamp generation attachment
       $('generate-btn').addEventListener('click', () => {
         const code = $('coupon-code').value.trim().toUpperCase();
-        if (!code) return toast('Enter a coupon code variant matrix first.');
+        if (!code) return toast('UHM actually, enter a coupon code variant matrix first 🤓');
 
         if (!templateImg.complete) {
           templateImg.onload = () => processAndDraw(code);
@@ -903,13 +926,23 @@
         state.selectedHash = hash;
         $('redeemName').value = coupon.used_by || '';
         await showCouponResult(coupon);
+        
         if (action === 'pick') {
-          toast('Coupon selected.');
+          switchTab('tabManageBtn', 'tabContentManage');
+          toast('Coupon selected and loaded into management card panel so you dont have to do that :3');
           return;
         }
-        if (action === 'redeem') await mutateSelected('redeem');
-        if (action === 'revoke') await mutateSelected('revoke');
-        if (action === 'delete') await mutateSelected('delete');
+        if (action === 'redeem') {
+          switchTab('tabManageBtn', 'tabContentManage');
+          await mutateSelected('redeem');
+        }
+        if (action === 'revoke') {
+          switchTab('tabManageBtn', 'tabContentManage');
+          await mutateSelected('revoke');
+        }
+        if (action === 'delete') {
+          await mutateSelected('delete');
+        }
       });
 
       const { data } = await supabase.auth.getSession();
