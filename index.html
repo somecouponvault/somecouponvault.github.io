@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Super swag coupon vault</title>
+  <title>super swag coupon making lair</title>
   <style>
     :root {
       --bg: #0b0c10;
@@ -41,6 +41,8 @@
     .brand p, .subtle { margin: 0; color: var(--muted); font-size: 0.94rem; }
     .pill-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
     .pill { border: 1px solid var(--line); background: rgba(255,255,255,0.04); color: var(--text); padding: 10px 14px; border-radius: 999px; font-size: 0.92rem; }
+
+    .tabs-nav { display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--line); padding-bottom: 14px; flex-wrap: wrap; }
 
     .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
     .card {
@@ -212,6 +214,12 @@
       text-align: center;
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    
+    /* Tab View Layout Constraints */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .tab-content.active.grid { display: grid; }
+    .focused-card-container { max-width: 760px; margin: 0 auto; width: 100%; }
   </style>
 </head>
 <body>
@@ -255,14 +263,24 @@
       </div>
     </div>
 
-    <div class="grid">
+    <div class="tabs-nav">
+      <button class="btn" id="tabOverviewBtn">Overview</button>
+      <button class="btn secondary" id="tabCreateBtn">Create Coupon</button>
+      <button class="btn secondary" id="tabManageBtn">Check & Redeem</button>
+      <button class="btn secondary" id="tabLedgerBtn">Coupon Ledger</button>
+      <button class="btn secondary" id="tabImageBtn">Image Generator</button>
+    </div>
+
+    <div class="grid tab-content active" id="tabContentOverview">
       <div class="card full">
         <div class="body">
           <div class="stats" id="stats"></div>
         </div>
       </div>
+    </div>
 
-      <div class="two-col">
+    <div class="tab-content" id="tabContentCreate">
+      <div class="focused-card-container">
         <section class="card">
           <div class="head">
             <div>
@@ -299,7 +317,11 @@
             </p>
           </div>
         </section>
+      </div>
+    </div>
 
+    <div class="tab-content" id="tabContentManage">
+      <div class="focused-card-container">
         <section class="card">
           <div class="head">
             <div>
@@ -325,17 +347,19 @@
               <button class="btn secondary" id="deleteBtn" disabled>Delete</button>
             </div>
             <p class="help" style="margin-top:12px;">
-              Expiry is automatic: the coupon is treated as expired everywhere the moment it is expired.
+              Expiry is automatic: the coupon is treated as expired everywhere the moment it expires.
             </p>
           </div>
         </section>
       </div>
+    </div>
 
+    <div class="grid tab-content" id="tabContentLedger">
       <section class="card full">
         <div class="head">
           <div>
             <h2>Coupon ledger</h2>
-            <p class="subtle">semi-live table (every 15 sec or so) of all the coupons, most recent are on top.</p>
+            <p class="subtle">semi-live table (every 15s refresh) of all the coupons, most recent are on top.</p>
           </div>
           <div class="actions">
             <button class="btn secondary" id="hideUsedBtn">Hide used / revoked</button>
@@ -359,8 +383,52 @@
         </div>
       </section>
     </div>
+
+    <div class="grid tab-content" id="tabContentImage">
+      <div class="two-col">
+        <section class="card">
+          <div class="head">
+            <div>
+              <h2>add text to the thing, iykyk</h2>
+              <p class="subtle">Render explicit layout coupon codes directly into the template card mesh matrix image background layer automatically 🤓</p>
+            </div>
+          </div>
+          <div class="body">
+            <div class="form">
+              <div class="field full">
+                <label for="coupon-code">Enter Coupon Code</label>
+                <input type="text" id="coupon-code" placeholder="E.G. FAX-IS-SWAG" autocomplete="off" style="text-transform: uppercase;">
+              </div>
+            </div>
+            <div class="actions" style="margin-top:20px;">
+              <button class="btn" id="generate-btn">Generate Stamp</button>
+              <button class="btn secondary" id="download-btn" disabled>Download PNG</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="head">
+            <div>
+              <h2>Visual output mesh</h2>
+              <p class="subtle">Live preview of generated asset footprint mapping node matrix logic 🤓</p>
+            </div>
+          </div>
+          <div class="body" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px;">
+            <div id="preview-container" style="display: none; width: 100%;">
+              <img id="preview-image" src="" alt="Coupon Preview" style="max-width:100%; border-radius:14px; border:1px solid var(--line); box-shadow: var(--shadow);">
+            </div>
+            <div id="preview-placeholder" class="help" style="text-align: center; padding: 40px 0;">
+              No graphical blueprint evaluated yet. Enter a code token matrix signature sequence on the left card and proceed 🤓
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
   </div>
 
+  <canvas id="canvas" style="display: none;"></canvas>
   <div class="toast" id="toast"></div>
 
   <script type="module">
@@ -375,6 +443,16 @@
 
     const $ = (id) => document.getElementById(id);
     const state = { coupons: [], selectedHash: null, latestPlain: '', hideUsed: false, session: null };
+
+    const TEMPLATE_PATH = 'coupon-template.png';
+    const FONT_NAME = 'SpecialElite-Regular';
+    const LUMA_THRESHOLD = 112;
+    const ROW_COL_FRACTION = 0.45;
+    const SEARCH_X_PAD = 0.12;
+    const SEARCH_Y_PAD = 0.18;
+
+    let templateImg = new Image();
+    templateImg.src = TEMPLATE_PATH;
 
     const toast = (msg) => {
       const el = $('toast');
@@ -435,6 +513,24 @@
       $('deleteBtn').disabled = !on;
     }
 
+    window.switchTab = function(btnId, contentId) {
+      const tabsMap = [
+        { btn: 'tabOverviewBtn', content: 'tabContentOverview' },
+        { btn: 'tabCreateBtn', content: 'tabContentCreate' },
+        { btn: 'tabManageBtn', content: 'tabContentManage' },
+        { btn: 'tabLedgerBtn', content: 'tabContentLedger' },
+        { btn: 'tabImageBtn', content: 'tabContentImage' }
+      ];
+
+      tabsMap.forEach(t => {
+        $(t.btn).classList.add('secondary');
+        $(t.content).classList.remove('active');
+      });
+
+      $(btnId).classList.remove('secondary');
+      $(contentId).classList.add('active');
+    };
+
     function renderStats() {
       const total = state.coupons.length;
       const active = state.coupons.filter(c => statusOf(c) === 'active').length;
@@ -454,7 +550,7 @@
       $('latestBox').innerHTML = `
         <div class="badge ok">New coupon created</div>
         <div style="margin-top:10px;">
-          <div class="subtle tiny">Copy this visible code n o w. Only the hash is stored, you can't see it anymore after creating.</div>
+          <div class="subtle tiny">Copy this visible code n o w. Only the hash is stored, you can't see it anymore after creating. dw I won't be mad :3</div>
           <div class="mono" style="margin-top:8px; font-size:1.05rem; letter-spacing:.12em;">${escapeHtml(code)}</div>
         </div>
         <div class="subtle tiny" style="margin-top:10px;">${coupon.discount_pct}% off · expires ${escapeHtml(fmt(coupon.expires_at))}</div>
@@ -512,8 +608,8 @@
       const createdFor = $('forUser').value.trim();
       const memo = $('memo').value.trim();
 
-      if (!Number.isFinite(discount) || discount < 1 || discount > 100) return toast('Pick a discount between 1 and 100.');
-      if (!Number.isFinite(daysValid) || daysValid < 1) return toast('Pick a valid number of days.');
+      if (!Number.isFinite(discount) || discount < 1 || discount > 100) return toast('bruh pick a discount between 1 and 100.');
+      if (!Number.isFinite(daysValid) || daysValid < 1) return toast('srs pick a valid number of days.');
 
       const plain = randomCode(3, 4);
       const codeHash = await sha256Hex(plain);
@@ -532,7 +628,7 @@
       const { data, error } = await supabase.from('coupons').insert(payload).select('*').single();
       if (error) {
         console.error(error);
-        toast('Could not create coupon.');
+        toast('Could not create coupon. (perhaps change your face) (dw youre just too nice for the program too handle) (another set of parentheses) (I cant do a high comma (idk accent? idkkk) cuz it will break the script and Im too lazy to fix that)');
         return;
       }
 
@@ -555,7 +651,7 @@
     async function showCouponResult(coupon) {
       if (!coupon) {
         $('searchResult').style.display = 'block';
-        $('searchResult').innerHTML = `<div class="badge bad">Not found</div><div class="help" style="margin-top:10px;">No matching coupon hash exists in the database. check again?</div>`;
+        $('searchResult').innerHTML = `<div class="badge bad">Not found</div><div class="help" style="margin-top:10px;">No matching coupon hash exists in the database. check again? else, probably fake mwaha</div>`;
         state.selectedHash = null;
         setButtons(false);
         return;
@@ -636,10 +732,122 @@
       if (updated) await showCouponResult(updated);
     }
 
+    function findParchmentBbox(width, height) {
+      const canvasEl = $('canvas');
+      const ctxEl = canvasEl.getContext('2d');
+      const imgData = ctxEl.getImageData(0, 0, width, height);
+      const data = imgData.data;
+
+      const x0_pad = Math.floor(width * SEARCH_X_PAD);
+      const x1_pad = Math.floor(width * (1 - SEARCH_X_PAD));
+      const y0_pad = Math.floor(height * SEARCH_Y_PAD);
+      const y1_pad = Math.floor(height * (1 - SEARCH_Y_PAD));
+
+      const subW = x1_pad - x0_pad;
+      const subH = y1_pad - y0_pad;
+
+      const rowVotes = new Array(subH).fill(0);
+      const colVotes = new Array(subW).fill(0);
+
+      for (let y = y0_pad; y < y1_pad; y++) {
+        for (let x = x0_pad; x < x1_pad; x++) {
+          const idx = (y * width + x) * 4;
+          const r = data[idx];
+          const g = data[idx + 1];
+          const b = data[idx + 2];
+          
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          if (lum > LUMA_THRESHOLD) {
+            rowVotes[y - y0_pad]++;
+            colVotes[x - x0_pad]++;
+          }
+        }
+      }
+
+      const validRows = [];
+      for (let i = 0; i < subH; i++) {
+        if ((rowVotes[i] / subW) > ROW_COL_FRACTION) validRows.push(i);
+      }
+
+      const validCols = [];
+      for (let i = 0; i < subW; i++) {
+        if ((colVotes[i] / subH) > ROW_COL_FRACTION) validCols.push(i);
+      }
+
+      if (validRows.length === 0 || validCols.length === 0) {
+        return {
+          x0: Math.floor(width * 0.18),
+          y0: Math.floor(height * 0.27),
+          x1: Math.floor(width * 0.82),
+          y1: Math.floor(height * 0.74)
+        };
+      }
+
+      return {
+        x0: x0_pad + Math.min(...validCols),
+        y0: y0_pad + Math.min(...validRows),
+        x1: x0_pad + Math.max(...validCols),
+        y1: y0_pad + Math.max(...validRows)
+      };
+    }
+
+    function fitFont(ctxEl, text, maxWidth, startSize) {
+      let size = startSize;
+      ctxEl.font = `${size}px "${FONT_NAME}", "Courier New", monospace`;
+      let metrics = ctxEl.measureText(text);
+
+      while (metrics.width > maxWidth && size > 10) {
+        size -= 2;
+        ctxEl.font = `${size}px "${FONT_NAME}", "Courier New", monospace`;
+        metrics = ctxEl.measureText(text);
+      }
+      return size;
+    }
+
+    function processAndDraw(code) {
+      const canvasEl = $('canvas');
+      const ctxEl = canvasEl.getContext('2d');
+
+      canvasEl.width = templateImg.naturalWidth || 600;
+      canvasEl.height = templateImg.naturalHeight || 300;
+
+      ctxEl.drawImage(templateImg, 0, 0);
+
+      const bounds = findParchmentBbox(canvasEl.width, canvasEl.height);
+
+      const centerX = (bounds.x0 + bounds.x1) / 2;
+      const centerY = (bounds.y0 + bounds.y1) / 2 + 3; 
+      const maxWidth = Math.floor((bounds.x1 - bounds.x0) * 0.84);
+
+      const idealFontSize = Math.floor(canvasEl.height * 0.13);
+      const optimizedSize = fitFont(ctxEl, code, maxWidth, idealFontSize);
+
+      ctxEl.font = `${optimizedSize}px "${FONT_NAME}", "Courier New", monospace`;
+      ctxEl.textAlign = 'center';
+      ctxEl.textBaseline = 'middle';
+      ctxEl.fillStyle = 'rgba(38, 24, 14, 0.94)'; 
+      
+      ctxEl.fillText(code, centerX, centerY);
+
+      const finalDataUrl = canvasEl.toDataURL('image/png');
+      $('preview-image').src = finalDataUrl;
+      $('preview-container').style.display = 'block';
+      if ($('preview-placeholder')) $('preview-placeholder').style.display = 'none';
+
+      $('download-btn').onclick = () => {
+        const link = document.createElement('a');
+        link.download = `${code}.png`;
+        link.href = finalDataUrl;
+        link.click();
+      };
+      $('download-btn').disabled = false;
+    }
+
     async function login() {
       const email = $('emailInput').value.trim();
       const password = $('pwInput').value;
-      if (!email || !password) return toast('Enter the shared email and password.');
+      if (!email || !password) return toast('Enter the email and password pwz :3');
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
@@ -670,6 +878,36 @@
         $('loginOverlay').classList.add('show');
       }
 
+      try {
+        const customFont = new FontFace(FONT_NAME, "url('SpecialElite-Regular.ttf')");
+        const loadedFont = await customFont.load();
+        document.fonts.add(loadedFont);
+        console.log("Typewriter font evaluated & loaded safely :3");
+      } catch (err) {
+        console.error("Font mapping matrix failed to preload:", err);
+      }
+
+      $('tabOverviewBtn').addEventListener('click', () => switchTab('tabOverviewBtn', 'tabContentOverview'));
+      $('tabCreateBtn').addEventListener('click', () => switchTab('tabCreateBtn', 'tabContentCreate'));
+      $('tabManageBtn').addEventListener('click', () => switchTab('tabManageBtn', 'tabContentManage'));
+      $('tabLedgerBtn').addEventListener('click', () => switchTab('tabLedgerBtn', 'tabContentLedger'));
+      $('tabImageBtn').addEventListener('click', () => switchTab('tabImageBtn', 'tabContentImage'));
+
+      $('coupon-code').addEventListener('input', (e) => {
+        e.target.value = e.target.value.toUpperCase();
+      });
+
+      $('generate-btn').addEventListener('click', () => {
+        const code = $('coupon-code').value.trim().toUpperCase();
+        if (!code) return toast('UHM actually, enter a coupon code variant matrix first 🤓');
+
+        if (!templateImg.complete) {
+          templateImg.onload = () => processAndDraw(code);
+        } else {
+          processAndDraw(code);
+        }
+      });
+
       $('loginBtn').addEventListener('click', login);
       $('pwInput').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
       $('emailInput').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
@@ -698,13 +936,23 @@
         state.selectedHash = hash;
         $('redeemName').value = coupon.used_by || '';
         await showCouponResult(coupon);
+        
         if (action === 'pick') {
-          toast('Coupon selected.');
+          switchTab('tabManageBtn', 'tabContentManage');
+          toast('Coupon selected and loaded into management card panel so you dont have to do that :3');
           return;
         }
-        if (action === 'redeem') await mutateSelected('redeem');
-        if (action === 'revoke') await mutateSelected('revoke');
-        if (action === 'delete') await mutateSelected('delete');
+        if (action === 'redeem') {
+          switchTab('tabManageBtn', 'tabContentManage');
+          await mutateSelected('redeem');
+        }
+        if (action === 'revoke') {
+          switchTab('tabManageBtn', 'tabContentManage');
+          await mutateSelected('revoke');
+        }
+        if (action === 'delete') {
+          await mutateSelected('delete');
+        }
       });
 
       const { data } = await supabase.auth.getSession();
@@ -726,7 +974,6 @@
           $('loginOverlay').classList.add('show');
         }
       });
-
 
       setInterval(() => loadCoupons().catch(() => {}), 15000);
     }
